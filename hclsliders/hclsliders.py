@@ -53,6 +53,7 @@ HISTORY_HEIGHT = 16 # px for color history and area of each color box
 # compatible color profiles in krita
 SRGB = ('sRGB-elle-V2-srgbtrc.icc', 'sRGB built-in')
 LINEAR = ('sRGB-elle-V2-g10.icc', 'krita-2.5, lcms sRGB built-in with linear gamma TRC')
+NOTATION = ('HEX', 'OKLAB', 'OKLCH')
 
 
 class ColorDisplay(QWidget):
@@ -909,7 +910,7 @@ class HCLSliders(DockWidget):
         self.document = None
         self.memory = 30
         self.trc = "sRGB"
-        self.notation = "HEX"
+        self.notation = NOTATION[0]
         self.text = ""
         self.pressed = False
         self.editing = False
@@ -1055,7 +1056,7 @@ class HCLSliders(DockWidget):
         if len(syntax) == 2:
             self.syntax.setEnabled(syntax[0] != "False")
             notation = syntax[1]
-            if notation in ("HEX", "OKLAB", "OKLCH"):
+            if notation in NOTATION:
                 self.notation = notation
 
     def writeSettings(self):
@@ -1204,7 +1205,7 @@ class HCLSliders(DockWidget):
         self.okhslSaturation.blockSignals(block)
         self.okhslLightness.blockSignals(block)
 
-    def updateChannels(self, values: tuple | float, name: str=None, widget: str=None):
+    def updateChannels(self, values: tuple|float, name: str=None, widget: str=None):
         self.timer.stop()
         self.blockChannels(True)
         
@@ -1226,27 +1227,35 @@ class HCLSliders(DockWidget):
                 self.editing = True
             # adjusting hsv sliders
             if name[:3] == "hsv":
-                rgb = Convert.hsvToRgbF(self.hsvHue.value(), self.hsvSaturation.value(), 
+                hue = self.hsvHue.value()
+                rgb = Convert.hsvToRgbF(hue, self.hsvSaturation.value(), 
                                         self.hsvValue.value(), self.trc)
                 self.setKritaFGColor(rgb)
-                self.setChannelValues("hsl", rgb, self.hsvHue.value())
-                self.setChannelValues("hcy", rgb)
+                self.setChannelValues("hsl", rgb, hue)
+                if self.hcyLuma.luma or self.trc == "sRGB":
+                    self.setChannelValues("hcy", rgb, hue)
+                else: 
+                    self.setChannelValues("hcy", rgb)
                 self.setChannelValues("okhcl", rgb)
                 self.setChannelValues("okhsv", rgb)
                 self.setChannelValues("okhsl", rgb)
             # adjusting hsl sliders
-            if name[:3] == "hsl":
-                rgb = Convert.hslToRgbF(self.hslHue.value(), self.hslSaturation.value(), 
+            elif name[:3] == "hsl":
+                hue = self.hslHue.value()
+                rgb = Convert.hslToRgbF(hue, self.hslSaturation.value(), 
                                         self.hslLightness.value(), self.trc)
                 self.setKritaFGColor(rgb)
-                self.setChannelValues("hsv", rgb, self.hslHue.value())
-                self.setChannelValues("hcy", rgb)
+                self.setChannelValues("hsv", rgb, hue)
+                if self.hcyLuma.luma or self.trc == "sRGB":
+                    self.setChannelValues("hcy", rgb, hue)
+                else:
+                    self.setChannelValues("hcy", rgb)
                 self.setChannelValues("okhcl", rgb)
                 self.setChannelValues("okhsv", rgb)
                 self.setChannelValues("okhsl", rgb)
             # adjusting hcy sliders
             elif name[:3] == "hcy":
-                rgb = None
+                hue = self.hcyHue.value()
                 chroma = self.hcyChroma.value()
                 limit = -1
                 if channel.scale:
@@ -1258,22 +1267,26 @@ class HCLSliders(DockWidget):
                         self.hcyChroma.clip = chroma
                     else:
                         chroma = self.hcyChroma.clip
-                rgb = Convert.hcyToRgbF(self.hcyHue.value(), chroma, self.hcyLuma.value(), 
-                                        limit, self.trc, self.hcyLuma.luma)
+                rgb = Convert.hcyToRgbF(hue, chroma, self.hcyLuma.value(), 
+                                        limit, self.trc, channel.luma)
                 self.setKritaFGColor(rgb)
                 if name[-6:] != "Chroma":
-                    hcy = Convert.rgbFToHcy(*rgb, self.hcyHue.value(), self.trc, self.hcyLuma.luma)
+                    hcy = Convert.rgbFToHcy(*rgb, hue, self.trc, channel.luma)
                     self.hcyChroma.setLimit(hcy[3])
                     self.hcyChroma.setValue(hcy[1])
                 # relative luminance doesnt match luma in hue
-                self.setChannelValues("hsv", rgb)
-                self.setChannelValues("hsl", rgb)
+                if channel.luma or self.trc == "sRGB":
+                    self.setChannelValues("hsv", rgb, hue)
+                    self.setChannelValues("hsl", rgb, hue)
+                else:
+                    self.setChannelValues("hsv", rgb)
+                    self.setChannelValues("hsl", rgb)
                 self.setChannelValues("okhcl", rgb)
                 self.setChannelValues("okhsv", rgb)
                 self.setChannelValues("okhsl", rgb)
             # adjusting okhcl sliders
             elif name[:5] == "okhcl":
-                rgb = None
+                hue = self.okhclHue.value()
                 chroma = self.okhclChroma.value()
                 limit = -1
                 if channel.scale:
@@ -1285,38 +1298,39 @@ class HCLSliders(DockWidget):
                         self.okhclChroma.clip = chroma
                     else:
                         chroma = self.okhclChroma.clip
-                rgb = Convert.okhclToRgbF(self.okhclHue.value(), chroma, 
-                                          self.okhclLightness.value(), limit, self.trc)
+                rgb = Convert.okhclToRgbF(hue, chroma, self.okhclLightness.value(), limit, self.trc)
                 self.setKritaFGColor(rgb)
                 if name[-6:] != "Chroma":
-                    okhcl = Convert.rgbFToOkhcl(*rgb, self.okhclHue.value(), self.trc)
+                    okhcl = Convert.rgbFToOkhcl(*rgb, hue, self.trc)
                     self.okhclChroma.setLimit(okhcl[3])
                     self.okhclChroma.setValue(okhcl[1])
                 self.setChannelValues("hsv", rgb)
                 self.setChannelValues("hsl", rgb)
                 self.setChannelValues("hcy", rgb)
-                self.setChannelValues("okhsv", rgb, self.okhclHue.value())
-                self.setChannelValues("okhsl", rgb, self.okhclHue.value())
+                self.setChannelValues("okhsv", rgb, hue)
+                self.setChannelValues("okhsl", rgb, hue)
             # adjusting okhsv sliders
             elif name[:5] == "okhsv":
-                rgb = Convert.okhsvToRgbF(self.okhsvHue.value(), self.okhsvSaturation.value(), 
+                hue = self.okhsvHue.value()
+                rgb = Convert.okhsvToRgbF(hue, self.okhsvSaturation.value(), 
                                           self.okhsvValue.value(), self.trc)
                 self.setKritaFGColor(rgb)
                 self.setChannelValues("hsv", rgb)
                 self.setChannelValues("hsl", rgb)
                 self.setChannelValues("hcy", rgb)
-                self.setChannelValues("okhcl", rgb, self.okhsvHue.value())
-                self.setChannelValues("okhsl", rgb, self.okhsvHue.value())
+                self.setChannelValues("okhcl", rgb, hue)
+                self.setChannelValues("okhsl", rgb, hue)
             # adjusting okhsl sliders
             elif name[:5] == "okhsl":
-                rgb = Convert.okhslToRgbF(self.okhslHue.value(), self.okhslSaturation.value(), 
+                hue = self.okhslHue.value()
+                rgb = Convert.okhslToRgbF(hue, self.okhslSaturation.value(), 
                                           self.okhslLightness.value(), self.trc)
                 self.setKritaFGColor(rgb)
                 self.setChannelValues("hsv", rgb)
                 self.setChannelValues("hsl", rgb)
                 self.setChannelValues("hcy", rgb)
-                self.setChannelValues("okhcl", rgb, self.okhslHue.value())
-                self.setChannelValues("okhsv", rgb, self.okhslHue.value())
+                self.setChannelValues("okhcl", rgb, hue)
+                self.setChannelValues("okhsv", rgb, hue)
         
         self.updateChannelGradients()
         self.blockChannels(False)
@@ -1385,46 +1399,46 @@ class HCLSliders(DockWidget):
             self.okhslLightness.updateGradientColors(self.okhslHue.value(), 
                                                      self.okhslSaturation.value(), self.trc)
 
-    def setChannelValues(self, channels: str, rgb: tuple, hue: float=None):
+    def setChannelValues(self, channels: str, rgb: tuple, hue: float=-1):
         if channels == "hsv":
             hsv = Convert.rgbFToHsv(*rgb, self.trc)
+            if hue != -1:
+                self.hsvHue.setValue(hue)
             if hsv[2] == 0:
                 self.hsvValue.setValue(0)
             elif hsv[1] == 0:
                 self.hsvSaturation.setValue(0)
                 self.hsvValue.setValue(hsv[2])
             else:
-                if hue:
-                    self.hsvHue.setValue(hue)
-                else:
+                if hue == -1:
                     self.hsvHue.setValue(hsv[0])
                 self.hsvSaturation.setValue(hsv[1])
                 self.hsvValue.setValue(hsv[2])
         elif channels == "hsl":
             hsl = Convert.rgbFToHsl(*rgb, self.trc)
+            if hue != -1:
+                self.hslHue.setValue(hue)
             if hsl[2] == 0 or hsl[2] == 1:
                 self.hslLightness.setValue(hsl[2])
             elif hsl[1] == 0:
                 self.hslSaturation.setValue(0)
                 self.hslLightness.setValue(hsl[2])
             else:
-                if hue:
-                    self.hslHue.setValue(hue)
-                else:
+                if hue == -1:
                     self.hslHue.setValue(hsl[0])
                 self.hslSaturation.setValue(hsl[1])
                 self.hslLightness.setValue(hsl[2])
         elif channels == "hcy":
             self.hcyChroma.clip = 0.0
             hcy = Convert.rgbFToHcy(*rgb, self.hcyHue.value(), self.trc, self.hcyLuma.luma)
+            if hue != -1:
+                self.hcyHue.setValue(hue)
             if hcy[1] == 0:
                 self.hcyChroma.setLimit(hcy[3])
                 self.hcyChroma.setValue(hcy[1])
                 self.hcyLuma.setValue(hcy[2])
             else:
-                if hue:
-                    self.hcyHue.setValue(hue)
-                else:
+                if hue == -1:
                     self.hcyHue.setValue(hcy[0])
                 # must always set limit before setting chroma value
                 self.hcyChroma.setLimit(hcy[3])
@@ -1433,7 +1447,7 @@ class HCLSliders(DockWidget):
         elif channels == "okhcl":
             self.okhclChroma.clip = 0.0
             okhcl = Convert.rgbFToOkhcl(*rgb, self.okhclHue.value(), self.trc)
-            if hue:
+            if hue != -1:
                 self.okhclHue.setValue(hue)
             else:
                 self.okhclHue.setValue(okhcl[0])
@@ -1443,29 +1457,29 @@ class HCLSliders(DockWidget):
             self.okhclLightness.setValue(okhcl[2])
         elif channels == "okhsv":
             okhsv = Convert.rgbFToOkhsv(*rgb, self.trc)
+            if hue != -1:
+                self.okhsvHue.setValue(hue)
             if okhsv[2] == 0:
                 self.okhsvValue.setValue(0)
             elif okhsv[1] == 0:
                 self.okhsvSaturation.setValue(0)
                 self.okhsvValue.setValue(okhsv[2])
             else:
-                if hue:
-                    self.okhsvHue.setValue(hue)
-                else:
+                if hue == -1:
                     self.okhsvHue.setValue(okhsv[0])
                 self.okhsvSaturation.setValue(okhsv[1])
                 self.okhsvValue.setValue(okhsv[2])
         elif channels == "okhsl":
             okhsl = Convert.rgbFToOkhsl(*rgb, self.trc)
+            if hue != -1:
+                self.okhslHue.setValue(hue)
             if okhsl[2] == 0 or okhsl[2] == 1:
                 self.okhslLightness.setValue(okhsl[2])
             elif okhsl[1] == 0:
                 self.okhslSaturation.setValue(0)
                 self.okhslLightness.setValue(okhsl[2])
             else:
-                if hue:
-                    self.okhslHue.setValue(hue)
-                else:
+                if hue == -1:
                     self.okhslHue.setValue(okhsl[0])
                 self.okhslSaturation.setValue(okhsl[1])
                 self.okhslLightness.setValue(okhsl[2])
@@ -1511,7 +1525,10 @@ class HCLSliders(DockWidget):
             trc = self.profileTRC(self.color.foreground.colorProfile())    
             if trc != self.trc:
                 rgb = Convert.rgbToTRC(rgb, self.trc)
-            self.setChannelValues("hcy", rgb)
+            if luma or self.trc == "sRGB":
+                self.setChannelValues("hcy", rgb, self.hsvHue.value())
+            else:
+                self.setChannelValues("hcy", rgb)
             self.updateChannelGradients("hcy")
 
         self.blockChannels(False)
@@ -1581,11 +1598,11 @@ class HCLSliders(DockWidget):
         self.pastColors = []
     
     def updateSyntax(self, rgb: tuple, trc: str):
-        if self.notation == "HEX":
+        if self.notation == NOTATION[0]:
             self.text = Convert.rgbFToHexS(*rgb, trc)
-        elif self.notation == "OKLAB":
+        elif self.notation == NOTATION[1]:
             self.text = Convert.rgbFToOklabS(*rgb, trc)
-        elif self.notation == "OKLCH":
+        elif self.notation == NOTATION[2]:
             self.text = Convert.rgbFToOklchS(*rgb, trc)
         self.syntax.setText(self.text)
 
@@ -1607,15 +1624,16 @@ class HCLSliders(DockWidget):
         Application.writeSetting(DOCKER_NAME, "syntax", ",".join(["True", notation]))
 
     def updateNotations(self):
-        if self.notation == "HEX":
-            self.prevNotation.setToolTip("OKLCH")
-            self.nextNotation.setToolTip("OKLAB")
-        elif self.notation == "OKLAB":
-            self.prevNotation.setToolTip("HEX")
-            self.nextNotation.setToolTip("OKLCH")
-        elif self.notation == "OKLCH":
-            self.prevNotation.setToolTip("OKLAB")
-            self.nextNotation.setToolTip("HEX")
+        i = NOTATION.index(self.notation)
+        if i == 0:
+            self.prevNotation.setToolTip(NOTATION[len(NOTATION) - 1])
+            self.nextNotation.setToolTip(NOTATION[i + 1])
+        elif i == len(NOTATION) - 1:
+            self.prevNotation.setToolTip(NOTATION[i - 1])
+            self.nextNotation.setToolTip(NOTATION[0])
+        else:
+            self.prevNotation.setToolTip(NOTATION[i - 1])
+            self.nextNotation.setToolTip(NOTATION[i + 1])
 
     def parseSyntax(self):
         view = Application.activeWindow().activeView()
@@ -1628,13 +1646,13 @@ class HCLSliders(DockWidget):
         rgb = None
         notation = self.notation
         if syntax[:1] == "#":
-            self.setNotation("HEX")
+            self.setNotation(NOTATION[0])
             rgb = Convert.hexSToRgbF(syntax, self.trc)
-        elif syntax[:5].lower() == "oklab":
-            self.setNotation("OKLAB")
+        elif syntax[:5].upper() == NOTATION[1]:
+            self.setNotation(NOTATION[1])
             rgb = Convert.oklabSToRgbF(syntax, self.trc)
-        elif syntax[:5].lower() == "oklch":
-            self.setNotation("OKLCH")
+        elif syntax[:5].upper() == NOTATION[2]:
+            self.setNotation(NOTATION[2])
             rgb = Convert.oklchSToRgbF(syntax, self.trc)
         
         if notation != self.notation:
