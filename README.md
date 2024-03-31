@@ -50,7 +50,7 @@ Left Mouse Button/Pen **Click**: Set color to foreground
 **Alt** + Left Mouse Button/Pen **Drag**: Delete a series of colors from history, starting from the point where mouse/pen is pressed until where the mouse/pen is released
 
 ## Install/Update
-1. Download the [ZIP file]()
+1. Download the [ZIP file](https://github.com/lucifer9683/HCLSliders/releases/download/v1.0.0/HCLSlidersV1.0.0.zip)
 2. Open Krita and go to Tools -> Scripts -> Import Python Plugin From File.
 3. Navigate to the download location and select the ZIP file.
 4. Restart Krita.
