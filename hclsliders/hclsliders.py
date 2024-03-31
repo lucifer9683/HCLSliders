@@ -1009,7 +1009,6 @@ class HCLSliders(DockWidget):
         channels = ColorChannel.getList()
         for name in channels:
             settings: list = Application.readSetting(DOCKER_NAME, name, "").split(",")
-            print(settings)
             if len(settings) > 1:
                 channel: ColorChannel = getattr(self, name)
                 try:
@@ -1520,9 +1519,9 @@ class HCLSliders(DockWidget):
         self.hcyChroma.luma = luma
         self.hcyLuma.luma = luma
 
-        if self.color.foreground:
-            rgb = tuple(self.color.foreground.componentsOrdered()[:3])
-            trc = self.profileTRC(self.color.foreground.colorProfile())    
+        if self.color.current:
+            rgb = tuple(self.color.current.componentsOrdered()[:3])
+            trc = self.profileTRC(self.color.current.colorProfile())    
             if trc != self.trc:
                 rgb = Convert.rgbToTRC(rgb, self.trc)
             if luma or self.trc == "sRGB":
