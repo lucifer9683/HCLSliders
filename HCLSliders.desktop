@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=hclsliders
+X-Python-2-Compatible=false
+X-Krita-Manual=Manual.html
+Name=HCL Sliders
+Comment=HCL sliders for color selection
