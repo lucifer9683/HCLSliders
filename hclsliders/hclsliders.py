@@ -1034,11 +1034,15 @@ class HCLSliders(DockWidget):
                     channel.luma = settings[-1] == "True"
         
         self.displayOrder = []
+        empty = False
         displayed = Application.readSetting(DOCKER_NAME, "displayed", "").split(",")
         for name in displayed:
             if name in channels:
                 self.displayOrder.append(name)
-        if not self.displayOrder:
+            elif name == "None":
+                empty = True
+                break
+        if not self.displayOrder and not empty:
             self.displayOrder = channels
 
         history = Application.readSetting(DOCKER_NAME, "history", "").split(",")
@@ -1059,7 +1063,7 @@ class HCLSliders(DockWidget):
                 self.notation = notation
 
     def writeSettings(self):
-        Application.writeSetting(DOCKER_NAME, "displayed", ",".join(self.displayOrder))
+        Application.writeSetting(DOCKER_NAME, "displayed", ",".join(self.displayOrder) if self.displayOrder else "None")
 
         for name in ColorChannel.getList():
             settings = []
