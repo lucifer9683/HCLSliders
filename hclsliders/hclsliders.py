@@ -45,14 +45,18 @@ from krita import DockWidget, ManagedColor
 from .colorconversion import Convert
 
 DOCKER_NAME = 'HCL Sliders'
+# adjust plugin sizes and update timing here
 TIME = 100 # ms time for plugin to update color from krita, faster updates may make krita slower
 DELAY = 300 # ms delay updating color history to prevent flooding when using the color picker
 DISPLAY_HEIGHT = 25 # px for color display panel at the top
 CHANNEL_HEIGHT = 19 # px for channels, also influences hex/ok syntax box and buttons
+MODEL_SPACING = 6 # px for spacing between color models
 HISTORY_HEIGHT = 16 # px for color history and area of each color box
 # compatible color profiles in krita
-SRGB = ('sRGB-elle-V2-srgbtrc.icc', 'sRGB built-in')
-LINEAR = ('sRGB-elle-V2-g10.icc', 'krita-2.5, lcms sRGB built-in with linear gamma TRC')
+SRGB = ('sRGB-elle-V2-srgbtrc.icc', 'sRGB built-in', 
+        'Gray-D50-elle-V2-srgbtrc.icc', 'Gray-D50-elle-V4-srgbtrc.icc')
+LINEAR = ('sRGB-elle-V2-g10.icc', 'krita-2.5, lcms sRGB built-in with linear gamma TRC', 
+          'Gray-D50-elle-V2-g10.icc', 'Gray-D50-elle-V4-g10.icc')
 NOTATION = ('HEX', 'OKLAB', 'OKLCH')
 
 
@@ -66,6 +70,9 @@ class ColorDisplay(QWidget):
         self.recent = None
         self.foreground = None
         self.background = None
+        self.temp = None
+        self.bgMode = False
+        self.switchToolTip()
 
     def setCurrentColor(self, color=None):
         self.current = color
@@ -79,24 +86,39 @@ class ColorDisplay(QWidget):
         self.background = color
         self.update()
 
+    def setTempColor(self, color=None):
+        self.temp = color
+        self.update()
+
     def resetColors(self):
         self.current = None
         self.recent = None
         self.foreground = None
         self.background = None
+        self.temp = None
         self.update()
 
     def isChanged(self):
         if self.current is None:
             return True
-        if self.current.components() != self.foreground.components():
-            return True
-        if self.current.colorModel() != self.foreground.colorModel():
-            return True
-        if self.current.colorDepth() != self.foreground.colorDepth():
-            return True
-        if self.current.colorProfile() != self.foreground.colorProfile():
-            return True
+        if self.bgMode:
+            if self.current.components() != self.background.components():
+                return True
+            if self.current.colorModel() != self.background.colorModel():
+                return True
+            if self.current.colorDepth() != self.background.colorDepth():
+                return True
+            if self.current.colorProfile() != self.background.colorProfile():
+                return True
+        else:
+            if self.current.components() != self.foreground.components():
+                return True
+            if self.current.colorModel() != self.foreground.colorModel():
+                return True
+            if self.current.colorDepth() != self.foreground.colorDepth():
+                return True
+            if self.current.colorProfile() != self.foreground.colorProfile():
+                return True
         return False
     
     def isChanging(self):
@@ -111,6 +133,21 @@ class ColorDisplay(QWidget):
         if self.recent.colorProfile() != self.current.colorProfile():
             return True
         return False
+    
+    def switchToolTip(self):
+        if self.bgMode:
+            self.setToolTip("Background Color")
+        else:
+            self.setToolTip("Foreground Color")
+    
+    def switchMode(self):
+        self.bgMode = not self.bgMode
+        self.switchToolTip()
+        self.update()
+    
+    def mousePressEvent(self, event):
+        self.setFocus()
+        self.switchMode()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -118,19 +155,28 @@ class ColorDisplay(QWidget):
         width = self.width()
         halfwidth = round(width / 2.0)
         height = self.height()
-        # foreground color from krita
-        if self.foreground:
+        # foreground/background color from krita
+        if self.foreground and not self.bgMode:
             painter.setBrush(QBrush(self.foreground.colorForCanvas(self.hcl.canvas())))
+        elif self.background and self.bgMode:
+            painter.setBrush(QBrush(self.background.colorForCanvas(self.hcl.canvas())))
         else:
             painter.setBrush( QBrush(QColor(0, 0, 0)))
         painter.drawRect(0, 0, width, height)
         # current color from sliders
         if self.current:
             painter.setBrush(QBrush(self.current.colorForCanvas(self.hcl.canvas())))
-            painter.drawRect(0, 0, halfwidth, height)
-        if self.background:
-            painter.setBrush(QBrush(self.background.colorForCanvas(self.hcl.canvas())))
-            painter.drawRect(halfwidth, 0, width - halfwidth, height)
+            if self.bgMode:
+                painter.drawRect(halfwidth, 0, width - halfwidth, height)
+            else:
+                painter.drawRect(0, 0, halfwidth, height)
+        # indicator for picking past color in other mode
+        if self.temp:
+            painter.setBrush(QBrush(self.temp.colorForCanvas(self.hcl.canvas())))
+            if self.bgMode:
+                painter.drawRect(0, 0, halfwidth, height)
+            else:
+                painter.drawRect(halfwidth, 0, width - halfwidth, height)
 
 
 class ColorHistory(QListWidget):
@@ -171,14 +217,22 @@ class ColorHistory(QListWidget):
             if (event.buttons() == Qt.MouseButton.LeftButton and 
                 event.modifiers() == Qt.KeyboardModifier.NoModifier):
                 color = self.hcl.makeManagedColor(*self.hcl.pastColors[index])
-                self.hcl.color.setCurrentColor(color)
-                self.index = index
+                if color:
+                    if self.hcl.color.bgMode:
+                        self.hcl.color.setTempColor(color)
+                    else:
+                        self.hcl.color.setCurrentColor(color)
+                    self.index = index
                 self.modifier = Qt.KeyboardModifier.NoModifier
             elif (event.buttons() == Qt.MouseButton.LeftButton and 
                 event.modifiers() == Qt.KeyboardModifier.ControlModifier):
                 color = self.hcl.makeManagedColor(*self.hcl.pastColors[index])
-                self.hcl.color.setBackGroundColor(color)
-                self.index = index
+                if color:
+                    if self.hcl.color.bgMode:
+                        self.hcl.color.setCurrentColor(color)
+                    else:
+                        self.hcl.color.setTempColor(color)
+                    self.index = index
                 self.modifier = Qt.KeyboardModifier.ControlModifier
             elif (event.buttons() == Qt.MouseButton.LeftButton and 
                 event.modifiers() == Qt.KeyboardModifier.AltModifier):
@@ -208,10 +262,10 @@ class ColorHistory(QListWidget):
         if index == self.index and index != -1:
             if (event.modifiers() == Qt.KeyboardModifier.NoModifier and 
                 self.modifier == Qt.KeyboardModifier.NoModifier):
-                self.hcl.setPastColorToFG(index)
+                self.hcl.setPastColor(index)
             elif (event.modifiers() == Qt.KeyboardModifier.ControlModifier and 
                   self.modifier == Qt.KeyboardModifier.ControlModifier):
-                self.hcl.setPastColorToBG()
+                self.hcl.setPastColor(index, False)
         
         if (event.modifiers() == Qt.KeyboardModifier.AltModifier and 
             self.modifier == Qt.KeyboardModifier.AltModifier):
@@ -225,11 +279,18 @@ class ColorHistory(QListWidget):
                     self.takeItem(i)
                     self.hcl.pastColors.pop(i)
 
-        if self.modifier == Qt.KeyboardModifier.NoModifier:
-            # prevent setHistory when krita fg color not changed
-            self.hcl.color.current = self.hcl.color.foreground
-        elif self.modifier == Qt.KeyboardModifier.ControlModifier:
-            self.hcl.color.setBackGroundColor()
+        if self.modifier == Qt.KeyboardModifier.NoModifier and self.index != -1:
+            if self.hcl.color.bgMode:
+                self.hcl.color.setTempColor()
+            else:
+                # prevent setHistory when krita fg color not changed
+                self.hcl.color.current = self.hcl.color.foreground
+        elif self.modifier == Qt.KeyboardModifier.ControlModifier and self.index != -1:
+            if self.hcl.color.bgMode:
+                # prevent setHistory when krita bg color not changed
+                self.hcl.color.current = self.hcl.color.background
+            else:
+                self.hcl.color.setTempColor()
         
         self.modifier = None
         self.index = -1
@@ -1087,7 +1148,13 @@ class HCLSliders(DockWidget):
         Application.writeSetting(DOCKER_NAME, "syntax", ",".join(syntax))
 
     def displayChannels(self):
+        prev = ""
         for name in self.displayOrder:
+            if MODEL_SPACING:
+                model = name[:5] if name[:2] == "ok" else name[:3]
+                if prev and prev != model:
+                    self.channelLayout.addSpacing(MODEL_SPACING)
+                prev = model
             channel = getattr(self, name)
             channel.layout.addWidget(channel.label)
             channel.layout.addWidget(channel.slider)
@@ -1099,10 +1166,11 @@ class HCLSliders(DockWidget):
         for i in reversed(range(self.channelLayout.count() - 2)):
             item = self.channelLayout.itemAt(i + 2)
             layout = item.layout()
-            for index in reversed(range(layout.count())):
-                widget = layout.itemAt(index).widget()
-                layout.removeWidget(widget)
-                widget.setParent(None)
+            if layout:
+                for index in reversed(range(layout.count())):
+                    widget = layout.itemAt(index).widget()
+                    layout.removeWidget(widget)
+                    widget.setParent(None)
             self.channelLayout.removeItem(item)
 
     def displayOthers(self):
@@ -1168,18 +1236,31 @@ class HCLSliders(DockWidget):
 
             foreground = view.foregroundColor()
             self.color.setForeGroundColor(foreground)
+            background = view.backgroundColor()
+            self.color.setBackGroundColor(background)
 
             if self.color.isChanged():
-                self.color.setCurrentColor(foreground)
-                rgb = tuple(foreground.componentsOrdered()[:3])
-                trc = self.profileTRC(foreground.colorProfile())
+                if self.color.bgMode:
+                    self.color.setCurrentColor(background)
+                else:
+                    self.color.setCurrentColor(foreground)
+
+                current = self.color.current
+                rgb = tuple(current.componentsOrdered()[:3])
+                if current.colorModel != "RGBA":
+                    if current.colorModel() == "A" or current.colorModel() == "GRAYA":
+                        rgb = (rgb[0], rgb[0], rgb[0])
+                    else:
+                        return
+                
+                trc = self.profileTRC(current.colorProfile())
                 self.updateSyntax(rgb, trc)          
                 if trc != self.trc:
                     rgb = Convert.rgbToTRC(rgb, self.trc)
                 self.updateChannels(rgb)
                 # add to color history after krita changes color
                 if not self.singleShot.isActive():
-                    self.color.recent = foreground
+                    self.color.recent = current
                     self.singleShot.start(DELAY)
 
     def blockChannels(self, block: bool):
@@ -1233,7 +1314,7 @@ class HCLSliders(DockWidget):
                 hue = self.hsvHue.value()
                 rgb = Convert.hsvToRgbF(hue, self.hsvSaturation.value(), 
                                         self.hsvValue.value(), self.trc)
-                self.setKritaFGColor(rgb)
+                self.setKritaColor(rgb)
                 self.setChannelValues("hsl", rgb, hue)
                 if self.hcyLuma.luma or self.trc == "sRGB":
                     self.setChannelValues("hcy", rgb, hue)
@@ -1247,7 +1328,7 @@ class HCLSliders(DockWidget):
                 hue = self.hslHue.value()
                 rgb = Convert.hslToRgbF(hue, self.hslSaturation.value(), 
                                         self.hslLightness.value(), self.trc)
-                self.setKritaFGColor(rgb)
+                self.setKritaColor(rgb)
                 self.setChannelValues("hsv", rgb, hue)
                 if self.hcyLuma.luma or self.trc == "sRGB":
                     self.setChannelValues("hcy", rgb, hue)
@@ -1272,7 +1353,7 @@ class HCLSliders(DockWidget):
                         chroma = self.hcyChroma.clip
                 rgb = Convert.hcyToRgbF(hue, chroma, self.hcyLuma.value(), 
                                         limit, self.trc, channel.luma)
-                self.setKritaFGColor(rgb)
+                self.setKritaColor(rgb)
                 if name[-6:] != "Chroma":
                     hcy = Convert.rgbFToHcy(*rgb, hue, self.trc, channel.luma)
                     self.hcyChroma.setLimit(hcy[3])
@@ -1302,7 +1383,7 @@ class HCLSliders(DockWidget):
                     else:
                         chroma = self.okhclChroma.clip
                 rgb = Convert.okhclToRgbF(hue, chroma, self.okhclLightness.value(), limit, self.trc)
-                self.setKritaFGColor(rgb)
+                self.setKritaColor(rgb)
                 if name[-6:] != "Chroma":
                     okhcl = Convert.rgbFToOkhcl(*rgb, hue, self.trc)
                     self.okhclChroma.setLimit(okhcl[3])
@@ -1317,7 +1398,7 @@ class HCLSliders(DockWidget):
                 hue = self.okhsvHue.value()
                 rgb = Convert.okhsvToRgbF(hue, self.okhsvSaturation.value(), 
                                           self.okhsvValue.value(), self.trc)
-                self.setKritaFGColor(rgb)
+                self.setKritaColor(rgb)
                 self.setChannelValues("hsv", rgb)
                 self.setChannelValues("hsl", rgb)
                 self.setChannelValues("hcy", rgb)
@@ -1328,7 +1409,7 @@ class HCLSliders(DockWidget):
                 hue = self.okhslHue.value()
                 rgb = Convert.okhslToRgbF(hue, self.okhslSaturation.value(), 
                                           self.okhslLightness.value(), self.trc)
-                self.setKritaFGColor(rgb)
+                self.setKritaColor(rgb)
                 self.setChannelValues("hsv", rgb)
                 self.setChannelValues("hsl", rgb)
                 self.setChannelValues("hcy", rgb)
@@ -1407,46 +1488,31 @@ class HCLSliders(DockWidget):
             hsv = Convert.rgbFToHsv(*rgb, self.trc)
             if hue != -1:
                 self.hsvHue.setValue(hue)
-            if hsv[2] == 0:
-                self.hsvValue.setValue(0)
-            elif hsv[1] == 0:
-                self.hsvSaturation.setValue(0)
-                self.hsvValue.setValue(hsv[2])
-            else:
-                if hue == -1:
-                    self.hsvHue.setValue(hsv[0])
+            elif hsv[1] > 0:
+                self.hsvHue.setValue(hsv[0])
+            if hsv[2] > 0:
                 self.hsvSaturation.setValue(hsv[1])
-                self.hsvValue.setValue(hsv[2])
+            self.hsvValue.setValue(hsv[2])
         elif channels == "hsl":
             hsl = Convert.rgbFToHsl(*rgb, self.trc)
             if hue != -1:
                 self.hslHue.setValue(hue)
-            if hsl[2] == 0 or hsl[2] == 1:
-                self.hslLightness.setValue(hsl[2])
-            elif hsl[1] == 0:
-                self.hslSaturation.setValue(0)
-                self.hslLightness.setValue(hsl[2])
-            else:
-                if hue == -1:
-                    self.hslHue.setValue(hsl[0])
+            elif hsl[1] > 0:
+                self.hslHue.setValue(hsl[0])
+            if hsl[2] > 0:
                 self.hslSaturation.setValue(hsl[1])
-                self.hslLightness.setValue(hsl[2])
+            self.hslLightness.setValue(hsl[2])
         elif channels == "hcy":
             self.hcyChroma.clip = 0.0
             hcy = Convert.rgbFToHcy(*rgb, self.hcyHue.value(), self.trc, self.hcyLuma.luma)
             if hue != -1:
                 self.hcyHue.setValue(hue)
-            if hcy[1] == 0:
-                self.hcyChroma.setLimit(hcy[3])
-                self.hcyChroma.setValue(hcy[1])
-                self.hcyLuma.setValue(hcy[2])
-            else:
-                if hue == -1:
-                    self.hcyHue.setValue(hcy[0])
-                # must always set limit before setting chroma value
-                self.hcyChroma.setLimit(hcy[3])
-                self.hcyChroma.setValue(hcy[1])
-                self.hcyLuma.setValue(hcy[2])
+            elif hcy[1] > 0:
+                self.hcyHue.setValue(hcy[0])
+            # must always set limit before setting chroma value
+            self.hcyChroma.setLimit(hcy[3])
+            self.hcyChroma.setValue(hcy[1])
+            self.hcyLuma.setValue(hcy[2])
         elif channels == "okhcl":
             self.okhclChroma.clip = 0.0
             okhcl = Convert.rgbFToOkhcl(*rgb, self.okhclHue.value(), self.trc)
@@ -1462,58 +1528,67 @@ class HCLSliders(DockWidget):
             okhsv = Convert.rgbFToOkhsv(*rgb, self.trc)
             if hue != -1:
                 self.okhsvHue.setValue(hue)
-            if okhsv[2] == 0:
-                self.okhsvValue.setValue(0)
-            elif okhsv[1] == 0:
-                self.okhsvSaturation.setValue(0)
-                self.okhsvValue.setValue(okhsv[2])
-            else:
-                if hue == -1:
-                    self.okhsvHue.setValue(okhsv[0])
+            elif okhsv[1] > 0:
+                self.okhsvHue.setValue(okhsv[0])
+            if okhsv[2] > 0:
                 self.okhsvSaturation.setValue(okhsv[1])
-                self.okhsvValue.setValue(okhsv[2])
+            self.okhsvValue.setValue(okhsv[2])
         elif channels == "okhsl":
             okhsl = Convert.rgbFToOkhsl(*rgb, self.trc)
             if hue != -1:
                 self.okhslHue.setValue(hue)
-            if okhsl[2] == 0 or okhsl[2] == 1:
-                self.okhslLightness.setValue(okhsl[2])
-            elif okhsl[1] == 0:
-                self.okhslSaturation.setValue(0)
-                self.okhslLightness.setValue(okhsl[2])
-            else:
-                if hue == -1:
-                    self.okhslHue.setValue(okhsl[0])
+            elif okhsl[1] > 0:
+                self.okhslHue.setValue(okhsl[0])
+            if okhsl[2] > 0:
                 self.okhslSaturation.setValue(okhsl[1])
-                self.okhslLightness.setValue(okhsl[2])
+            self.okhslLightness.setValue(okhsl[2])
 
     def makeManagedColor(self, rgb: tuple, profile: str=None):
-        model = self.document.colorModel()
+        model = "RGBA"
+        depth = self.document.colorDepth()
+        if not profile:
+                if self.trc == "sRGB":
+                    profile = SRGB[0]
+                else:
+                    profile = LINEAR[0]
+        elif profile not in Application.profiles(model, depth):
+            models = filter(lambda cm: cm != "RGBA", Application.colorModels())
+            for cm in models:
+                if profile in Application.profiles(cm, depth):
+                    model = cm
+                    break
+
+        color = ManagedColor(model, depth, profile)
+        components = color.components()
         # support for other models in the future
         if model == "RGBA":
-            if not profile:
-                profile = self.document.colorProfile()
-            color = ManagedColor(model, self.document.colorDepth(), profile)
-            components = color.components()
             # unordered sequence is BGRA
             components[0] = rgb[2]
             components[1] = rgb[1]
             components[2] = rgb[0]
             components[3] = 1.0
-
+            color.setComponents(components)
+            return color
+        elif model == "A" or model == "GRAYA":
+            components[0] = rgb[0]
+            components[1] = 1.0
             color.setComponents(components)
             return color
 
-    def setKritaFGColor(self, rgb: tuple):
+    def setKritaColor(self, rgb: tuple):
         view = Application.activeWindow().activeView()
         if not view.visible():
             return
         
         color = self.makeManagedColor(rgb)
-        self.color.setCurrentColor(color)
-        self.updateSyntax(rgb, self.trc)
-        view.setForeGroundColor(color)
-        self.color.recent = color
+        if color:
+            self.color.setCurrentColor(color)
+            self.updateSyntax(rgb, self.trc)
+            if self.color.bgMode:
+                view.setBackGroundColor(color)
+            else:
+                view.setForeGroundColor(color)
+            self.color.recent = color
 
     def setLuma(self, luma: bool):
         self.timer.stop()
@@ -1544,8 +1619,11 @@ class HCLSliders(DockWidget):
             self.color.current = None
             return
         
-        rgb = tuple(self.color.current.componentsOrdered()[:3])
-        profile = self.color.current.colorProfile()
+        current = self.color.current
+        rgb = tuple(current.componentsOrdered()[:3])
+        if current.colorModel() == "A" or current.colorModel() == "GRAYA":
+            rgb = (rgb[0], rgb[0], rgb[0])
+        profile = current.colorProfile()
         color = (rgb, profile)
         if color in self.pastColors:
             index = self.pastColors.index(color)
@@ -1570,31 +1648,40 @@ class HCLSliders(DockWidget):
                         break
         self.history.horizontalScrollBar().setValue(0)
 
-    def setPastColorToFG(self, index: int):
+    def setPastColor(self, index: int, fg=True):
         view = Application.activeWindow().activeView()
         if not view.visible():
             return
         
-        self.history.takeItem(index)
-        color = self.pastColors.pop(index)
-        rgb = color[0]
-        trc = self.profileTRC(color[1])
-        self.updateSyntax(rgb, trc)
-        if trc != self.trc:
-            rgb = Convert.rgbToTRC(rgb, self.trc)
-        self.updateChannels(rgb)
-        view.setForeGroundColor(self.color.current)
-        # prevent setHistory again during getKritaColors
-        self.color.setForeGroundColor(self.color.current)
-        self.color.recent = self.color.current
-        self.setHistory()
+        if (self.color.bgMode and not fg) or (fg and not self.color.bgMode):
+            self.history.takeItem(index)
+            color = self.pastColors.pop(index)
+            rgb = color[0]
+            trc = self.profileTRC(color[1])
+            self.updateSyntax(rgb, trc)
+            if trc != self.trc:
+                rgb = Convert.rgbToTRC(rgb, self.trc)
+            self.updateChannels(rgb)
 
-    def setPastColorToBG(self):
-        view = Application.activeWindow().activeView()
-        if not view.visible():
-            return
-        
-        view.setBackGroundColor(self.color.background)
+            current = self.color.current
+            if fg:
+                view.setForeGroundColor(current)
+                # prevent setHistory again during getKritaColors
+                self.color.setForeGroundColor(current)
+            else:
+                view.setBackGroundColor(current)
+                # prevent setHistory again during getKritaColors
+                self.color.setBackGroundColor(current)
+            self.color.recent = current
+            self.setHistory()
+        else:
+            temp = self.color.temp
+            if fg:
+                view.setForeGroundColor(temp)
+                self.color.setForeGroundColor(temp)
+            else:
+                view.setBackGroundColor(temp)
+                self.color.setBackGroundColor(temp)
 
     def clearHistory(self):
         self.history.clear()
@@ -1661,7 +1748,7 @@ class HCLSliders(DockWidget):
         if notation != self.notation:
             self.updateNotations()
         if rgb:
-            self.setKritaFGColor(rgb)
+            self.setKritaColor(rgb)
             self.updateChannels(rgb)
         else:
             color = view.foregroundColor()
