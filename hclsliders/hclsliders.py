@@ -45,7 +45,7 @@ from krita import DockWidget, ManagedColor
 from .colorconversion import Convert
 
 DOCKER_NAME = 'HCL Sliders'
-# adjust plugin size and update timing here
+# adjust plugin sizes and update timing here
 TIME = 100 # ms time for plugin to update color from krita, faster updates may make krita slower
 DELAY = 300 # ms delay updating color history to prevent flooding when using the color picker
 DISPLAY_HEIGHT = 25 # px for color display panel at the top
@@ -1247,8 +1247,11 @@ class HCLSliders(DockWidget):
 
                 current = self.color.current
                 rgb = tuple(current.componentsOrdered()[:3])
-                if current.colorModel() == "A" or current.colorModel() == "GRAYA":
-                    rgb = (rgb[0], rgb[0], rgb[0])
+                if current.colorModel != "RGBA":
+                    if current.colorModel() == "A" or current.colorModel() == "GRAYA":
+                        rgb = (rgb[0], rgb[0], rgb[0])
+                    else:
+                        return
                 
                 trc = self.profileTRC(current.colorProfile())
                 self.updateSyntax(rgb, trc)          
