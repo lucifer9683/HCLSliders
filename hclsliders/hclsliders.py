@@ -1247,7 +1247,7 @@ class HCLSliders(DockWidget):
 
                 current = self.color.current
                 rgb = tuple(current.componentsOrdered()[:3])
-                if current.colorModel != "RGBA":
+                if current.colorModel() != "RGBA":
                     if current.colorModel() == "A" or current.colorModel() == "GRAYA":
                         rgb = (rgb[0], rgb[0], rgb[0])
                     else:
