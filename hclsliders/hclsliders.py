@@ -52,6 +52,14 @@ DISPLAY_HEIGHT = 25 # px for color display panel at the top
 CHANNEL_HEIGHT = 19 # px for channels, also influences hex/ok syntax box and buttons
 MODEL_SPACING = 6 # px for spacing between color models
 HISTORY_HEIGHT = 16 # px for color history and area of each color box
+VALUES_WIDTH = 63 # px for spinboxes containing channel values
+LABEL_WIDTH = 11 # px for spacing of channel indicator/letter
+# adjust various sizes of config menu
+CONFIG_SIZE = (468, 230) # (width in px, height in px) size for config window
+SIDEBAR_WIDTH = 76 # px for sidebar containing channel selection and others button 
+GROUPBOX_HEIGHT = 64 # px for groupboxes of cursor snapping, chroma mode and color history
+SPINBOX_WIDTH = 72 # px for spinboxes of interval, displacement and memory
+OTHERS_HEIGHT = 12 # px for spacing before color history in others page
 # compatible color profiles in krita
 SRGB = ('sRGB-elle-V2-srgbtrc.icc', 'sRGB built-in', 
         'Gray-D50-elle-V2-srgbtrc.icc', 'Gray-D50-elle-V4-srgbtrc.icc')
@@ -504,7 +512,7 @@ class ColorChannel:
                 letter = self.name[3:4]
         self.label = QLabel(letter)
         self.label.setFixedHeight(CHANNEL_HEIGHT - 1)
-        self.label.setFixedWidth(11)
+        self.label.setFixedWidth(LABEL_WIDTH)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setToolTip(tip)
 
@@ -521,7 +529,7 @@ class ColorChannel:
         self.spinBox.setMaximum(self.limit)
         self.spinBox.setWrapping(wrap)
         self.spinBox.setFixedHeight(CHANNEL_HEIGHT)
-        self.spinBox.setFixedWidth(63)
+        self.spinBox.setFixedWidth(VALUES_WIDTH)
         self.spinBox.editingFinished.connect(parent.finishEditing)
 
         self.slider.valueChanged.connect(self.updateSpinBox)
@@ -721,13 +729,13 @@ class SliderConfig(QDialog):
         
         self.hcl = parent
         self.setWindowTitle("Configure HCL Sliders")
-        self.setFixedSize(468, 230)
+        self.setFixedSize(*CONFIG_SIZE)
         self.mainLayout = QHBoxLayout(self)
         self.loadPages()
 
     def loadPages(self):
         self.pageList = QListWidget()
-        self.pageList.setFixedWidth(76)
+        self.pageList.setFixedWidth(SIDEBAR_WIDTH)
         self.pageList.setDragEnabled(True)
         self.pageList.viewport().setAcceptDrops(True)
         self.pageList.setDropIndicatorShown(True)
@@ -762,11 +770,11 @@ class SliderConfig(QDialog):
                 channel: ColorChannel = getattr(self.hcl, name)
 
                 snapGroup = QGroupBox("Cursor Snapping")
-                snapGroup.setFixedHeight(64)
+                snapGroup.setFixedHeight(GROUPBOX_HEIGHT)
                 snapGroup.setToolTip("Ctrl + Click to snap cursor at intervals")
                 snapLayout = QHBoxLayout()
                 interval = QDoubleSpinBox()
-                interval.setFixedWidth(72)
+                interval.setFixedWidth(SPINBOX_WIDTH)
                 interval.setDecimals(1)
                 interval.setMinimum(0.1)
                 snapLayout.addWidget(interval)
@@ -774,7 +782,7 @@ class SliderConfig(QDialog):
                 intervalLabel.setToolTip("Sets the snap interval to amount")
                 snapLayout.addWidget(intervalLabel)
                 displacement = QDoubleSpinBox()
-                displacement.setFixedWidth(72)
+                displacement.setFixedWidth(SPINBOX_WIDTH)
                 displacement.setDecimals(1)
                 snapLayout.addWidget(displacement)
                 DisplacementLabel = QLabel("Displacement")
@@ -786,7 +794,7 @@ class SliderConfig(QDialog):
                 param = name[len(model):]
                 if (model == 'HCY' or model == 'OKHCL') and param != 'Chroma':
                     radioGroup = QGroupBox("Chroma Mode")
-                    radioGroup.setFixedHeight(64)
+                    radioGroup.setFixedHeight(GROUPBOX_HEIGHT)
                     radioGroup.setToolTip("Switches how chroma is adjusted \
                                           to stay within the sRGB gamut")
                     radioLayout = QHBoxLayout()
@@ -858,17 +866,17 @@ class SliderConfig(QDialog):
         self.others = QPushButton("Others")
         self.others.setAutoDefault(False)
         self.others.setCheckable(True)
-        self.others.setFixedWidth(76)
+        self.others.setFixedWidth(SIDEBAR_WIDTH)
         self.others.clicked.connect(self.changeOthers)
 
         history = QGroupBox("Color History")
-        history.setFixedHeight(64)
+        history.setFixedHeight(GROUPBOX_HEIGHT)
         history.setToolTip("Records foreground color when changed")
         history.setCheckable(True)
         history.setChecked(self.hcl.history.isEnabled())
         history.toggled.connect(self.refreshOthers)
         memory = QSpinBox()
-        memory.setFixedWidth(72)
+        memory.setFixedWidth(SPINBOX_WIDTH)
         memory.setMaximum(999)
         memory.setValue(self.hcl.memory)
         memory.valueChanged.connect(self.hcl.setMemory)
@@ -890,7 +898,7 @@ class SliderConfig(QDialog):
 
         othersTab = QWidget()
         pageLayout = QVBoxLayout()
-        pageLayout.addSpacing(12)
+        pageLayout.addSpacing(OTHERS_HEIGHT)
         pageLayout.addWidget(history)
         pageLayout.addStretch()
         pageLayout.addWidget(syntax)
