@@ -53,7 +53,7 @@ Left Mouse Button/Pen **Click**: Set color to foreground
 **Click** on the color display panel on the plugin to toggle between selecting foreground and background color.
 
 ## Install/Update
-1. Download the [ZIP file](https://github.com/lucifer9683/HCLSliders/releases/download/v1.1.1/HCLSlidersV1.1.1.zip)
+1. Download the [ZIP file](https://github.com/lucifer9683/HCLSliders/releases/download/v1.1.2/HCLSlidersV1.1.2.zip)
 2. Open Krita and go to Tools -> Scripts -> Import Python Plugin From File.
 3. Navigate to the download location and select the ZIP file.
 4. Restart Krita.
