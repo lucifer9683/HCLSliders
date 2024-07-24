@@ -1570,10 +1570,15 @@ class HCLSliders(DockWidget):
         components = color.components()
         # support for other models in the future
         if model == "RGBA":
-            # unordered sequence is BGRA
-            components[0] = rgb[2]
-            components[1] = rgb[1]
-            components[2] = rgb[0]
+            # unordered sequence is BGRA for uint but RGBA for float 
+            if depth[0] == "U":
+                components[0] = rgb[2]
+                components[1] = rgb[1]
+                components[2] = rgb[0]
+            else:
+                components[0] = rgb[0]
+                components[1] = rgb[1]
+                components[2] = rgb[2]
             components[3] = 1.0
             color.setComponents(components)
             return color
