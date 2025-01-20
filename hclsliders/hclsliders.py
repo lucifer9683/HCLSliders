@@ -1777,9 +1777,10 @@ class HCLSliders(DockWidget):
 
     def canvasChanged(self, canvas):
         if self.document != Application.activeDocument():
-            self.document = Application.activeDocument()
-            self.trc = self.profileTRC(self.document.colorProfile())
             self.color.resetColors()
             self.syntax.setText("")
-            self.getKritaColors()
+            self.document = Application.activeDocument()
+            if self.document:
+                self.trc = self.profileTRC(self.document.colorProfile())    
+                self.getKritaColors()
 
