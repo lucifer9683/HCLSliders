@@ -715,7 +715,8 @@ class ColorChannel:
     def updateList(cls, name: str):
         if cls.channelList is None:
             cls.channelList = []
-        cls.channelList.append(name)
+        if name not in cls.channelList:
+            cls.channelList.append(name)
 
     @classmethod
     def getList(cls):
@@ -1107,7 +1108,8 @@ class HCLSliders(DockWidget):
         displayed = Application.readSetting(DOCKER_NAME, "displayed", "").split(",")
         for name in displayed:
             if name in channels:
-                self.displayOrder.append(name)
+                if name not in self.displayOrder:
+                    self.displayOrder.append(name)
             elif name == "None":
                 empty = True
                 break
