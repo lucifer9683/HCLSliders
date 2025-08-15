@@ -54,6 +54,7 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math, sys
+from .settings import *
 # luma coefficents for ITU-R BT.709
 Y709R = 0.2126
 Y709G = 0.7152
@@ -69,6 +70,38 @@ K3 = (1.0 + K1) / (1.0 + K2)
 
 
 class Convert:
+
+    @staticmethod
+    def parseAnything(syntax: str, trc: str, curNotation: str):
+        attempt = []
+
+        if len(syntax) == 6:
+            attempt.append((Convert.hexSToRgbF, "#" + syntax, NOTATION[0]))
+        if len(syntax) == 7 and syntax[0] == "#":
+            attempt.append((Convert.hexSToRgbF, syntax, NOTATION[0]))
+        
+        if syntax.startswith("oklab"):
+            attempt.append((Convert.oklabSToRgbF, syntax, NOTATION[1]))
+        if syntax.startswith("oklch"):
+            attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
+        if curNotation == NOTATION[1]:
+            attempt.append((Convert.oklabSToRgbF, syntax, NOTATION[1]))
+        if curNotation == NOTATION[2]:
+            attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
+        
+        components = syntax.split(" ")
+        if len(components) == 3:
+            if curNotation == NOTATION[1] or components[1][0] == "-" or components[2][0] == "-":
+                attempt.append((Convert.oklabSToRgbF, f"oklab({components[0]} {components[1]} {components[2]})", NOTATION[1]))
+            if curNotation == NOTATION[2]:
+                attempt.append((Convert.oklchSToRgbF, f"oklch({components[0]} {components[1]} {components[2]})", NOTATION[2]))
+
+        for fn, val, notation in attempt:
+            res = fn(val, trc)
+            if res:
+                return res, notation
+        
+        raise ValueError(f"Unable to parse syntax: {syntax}")
 
     @staticmethod
     def roundZero(n: float, d: int):
@@ -397,15 +430,13 @@ class Convert:
     @staticmethod
     def hexSToRgbF(syntax: str, trc: str):
         if len(syntax) != 7:
-            print("Invalid syntax")
-            return
+            return None
         try:
             r = int(syntax[1:3], 16) / 255.0
             g = int(syntax[3:5], 16) / 255.0
             b = int(syntax[5:7], 16) / 255.0
         except ValueError:
-            print("Invalid syntax")
-            return
+            return None
         
         if trc == "sRGB":
             return (r, g, b)
@@ -432,8 +463,7 @@ class Convert:
     def oklabSToRgbF(syntax: str, trc: str):
         strings = syntax[5:].strip("( )").split()
         if len(strings) != 3:
-            print("Invalid syntax")
-            return
+            return None
         okL = strings[0]
         okA = strings[1]
         okB = strings[2]
@@ -451,8 +481,7 @@ class Convert:
             else:
                 okB = Convert.clampF(float(okB), 0.4, -0.4)
         except ValueError:
-            print("Invalid syntax")
-            return
+            return None
         rgb = Convert.oklabToLinear(okL, okA, okB)
         # if rgb not linear, perform transfer functions for components
         r = Convert.componentToSRGB(rgb[0]) if trc == "sRGB" else rgb[0]
@@ -507,8 +536,7 @@ class Convert:
     def oklchSToRgbF(syntax: str, trc: str):
         strings = syntax[5:].strip("( )").split()
         if len(strings) != 3:
-            print("Invalid syntax")
-            return
+            return None
         l = strings[0]
         c = strings[1]
         h = strings[2]
@@ -523,8 +551,7 @@ class Convert:
                 c = Convert.clampF(float(c), 0.4)
             h = Convert.clampF(float(h.strip("deg")), 360.0)
         except ValueError:
-            print("Invalid syntax")
-            return
+            return None
         return Convert.oklchToRgbF(l, c, h, trc)
     
     @staticmethod
