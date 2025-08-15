@@ -552,7 +552,7 @@ class Convert:
             h = Convert.clampF(float(h.strip("deg")), 360.0)
         except ValueError:
             return None
-        return Convert.oklchToRgbF(l, c, h, trc)
+        return Convert.oklchToRgbF(l, c, h, -1, trc)
     
     @staticmethod
     def oklchToRgbF(l: float, c: float, h: float, u: float, trc: str):
