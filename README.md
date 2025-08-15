@@ -21,13 +21,20 @@ This plugin contains sliders for various hue/colorfulness/lightness models for u
 
 *OKHSL* (Hue, Interpolated Saturation, Referenced Lightness)
 
+*OKHCL* (Hue, Chroma, Lightness)
+
 ### Accepted CSS Syntax
 
-*Hexicimal* notations: Must be 6 digits, i.e. #RRGGBB
+*Heximal* notations: Must be 6 digits, i.e. `#AABBCC`
 
-*Oklab* notations: RGB values will be clipped to the sRGB gamut
+*Oklab* notations: RGB values will be clipped to the sRGB gamut, i.e. `oklab(50% 0 0)`
 
-*Oklch* notations: Hue must be given in degrees and RGB will be clipped
+*Oklch* notations: Hue must be given in degrees and RGB will be clipped, i.e. `oklch(50% 0.1 300)`
+
+Some extra non-standard formats are also supported when parsing:
+
+- Heximal without the `#` prefix, i.e. `AABBCC`
+- Oklab/Oklch without the `okxxx` and brackets, i.e. `50% 0 0` (Or not using percentage value, like `0.5`)
 
 ## Slider Interactions
 Left Mouse Button/Pen **Press**: Set value for channel
