@@ -526,18 +526,21 @@ class Convert:
             print("Invalid syntax")
             return
         return Convert.oklchToRgbF(l, c, h, trc)
-
+    
     @staticmethod
     def oklchToRgbF(l: float, c: float, h: float, u: float, trc: str):
         l = l / 100
-        c = c / 100
-        u = u / 100
         # clip chroma if exceed sRGB gamut
         ab = Convert.polarToCartesian(1, h)
         if c:
-            u = Convert.findGamutIntersection(*ab, l, 1, l)
-            if c > u:
-                c = u
+            cMax = Convert.findGamutIntersection(*ab, l, 1, l)
+            if u == -1:
+                c = c / 100
+                if c > cMax:
+                    c = cMax
+            else:
+                s = c / u
+                c = s * cMax
         rgb = Convert.oklabToLinear(l, ab[0] * c, ab[1] * c)
         # if rgb not linear, perform transfer functions for components
         r = Convert.componentToSRGB(rgb[0]) if trc == "sRGB" else rgb[0]
