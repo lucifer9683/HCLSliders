@@ -813,7 +813,7 @@ class SliderConfig(QDialog):
                 tabLayout.addWidget(snapGroup)
                 
                 param = name[len(model):]
-                if (model == 'HCY' or model == 'OKHCL') and param != 'Chroma':
+                if model in ['HCY', 'OKHCL', 'OKLCH'] and param != 'Chroma':
                     radioGroup = QGroupBox("Chroma Mode")
                     radioGroup.setFixedHeight(GROUPBOX_HEIGHT)
                     radioGroup.setToolTip("Switches how chroma is adjusted \
@@ -1073,11 +1073,11 @@ class HCLSliders(DockWidget):
         self.okhslSaturation = ColorChannel("okhslSaturation", self)
         self.okhslLightness = ColorChannel("okhslLightness", self)
 
-        self.oklchHue = ColorChannel("oklchHue", self)
-        self.oklchHue.scale = False
-        self.oklchChroma = ColorChannel("oklchChroma", self)
         self.oklchLightness = ColorChannel("oklchLightness", self)
         self.oklchLightness.scale = False
+        self.oklchChroma = ColorChannel("oklchChroma", self)
+        self.oklchHue = ColorChannel("oklchHue", self)
+        self.oklchHue.scale = False
         
         self.mainLayout.addLayout(self.channelLayout)
 
