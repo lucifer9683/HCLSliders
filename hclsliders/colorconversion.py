@@ -461,19 +461,23 @@ class Convert:
         return (Convert.clampF(r), Convert.clampF(g), Convert.clampF(b))
     
     @staticmethod
-    def rgbFToOklchS(r: float, g: float, b: float, trc: str):
+    def rgbFToOklch(r: float, g: float, b: float, h: float, trc: str):
         # if rgb not linear, convert to linear for oklab conversion
         if trc == "sRGB":
             r = Convert.componentToLinear(r)
             g = Convert.componentToLinear(g)
             b = Convert.componentToLinear(b)
         oklab = Convert.linearToOklab(r, g, b)
-        l = round(oklab[0] * 100, 2)
+        l = oklab[0]
         ch = Convert.cartesianToPolar(oklab[1], oklab[2])
         c = ch[0]
         h = 0
         # chroma of neutral colors will not be exactly 0 due to floating point errors
         if c < 0.000001:
+            # use current hue to calulate chroma limit in sRGB gamut for neutral colors
+            ab = Convert.polarToCartesian(1, h)
+            cuspLC = Convert.findCuspLC(*ab)
+            u = Convert.findGamutIntersection(*ab, l, 1, l, cuspLC)
             c = 0
         else:
             # chroma adjustment due to rounding up blue hue
@@ -483,8 +487,23 @@ class Convert:
             else:
                 h = round(ch[1], 2)
                 c = Convert.roundZero(c, 4)
-        # l in percentage, c is 0 to 0.3+, h in degrees
-        return f"oklch({l}% {c} {h})"
+                
+            # a and b must be normalized to c = 1 to calculate chroma limit in sRGB gamut
+            a_ = oklab[1] / c
+            b_ = oklab[2] / c
+            cuspLC = Convert.findCuspLC(a_, b_)
+            u = Convert.findGamutIntersection(a_, b_, l, 1, l, cuspLC)
+            if c > u:
+                c = u
+        
+        # l = Convert.toe(l)
+        # l in [0, 100], c is 0 to 0.3+, h in degrees
+        return (l * 100, c * 100, h, u * 100)
+    
+    @staticmethod
+    def rgbFToOklchS(r: float, g: float, b: float, trc: str):
+        l, c, h, _ = Convert.rgbFToOklch(r, g, b, 0, trc)
+        return f"oklch({round(l, 2)}% {round(c / 100, 2)} {h})"
     
     @staticmethod
     def oklchSToRgbF(syntax: str, trc: str):
@@ -508,6 +527,13 @@ class Convert:
         except ValueError:
             print("Invalid syntax")
             return
+        return Convert.oklchToRgbF(l, c, h, trc)
+
+    @staticmethod
+    def oklchToRgbF(l: float, c: float, h: float, u: float, trc: str):
+        l = l / 100
+        c = c / 100
+        u = u / 100
         # clip chroma if exceed sRGB gamut
         ab = Convert.polarToCartesian(1, h)
         if c:
