@@ -90,6 +90,7 @@ class Convert:
             attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
         
         components = syntax.split(" ")
+        print(f"Components: {components}")
         if len(components) == 3:
             if curNotation == NOTATION[1] or components[1][0] == "-" or components[2][0] == "-":
                 attempt.append((Convert.oklabSToRgbF, f"oklab({components[0]} {components[1]} {components[2]})", NOTATION[1]))
@@ -97,11 +98,13 @@ class Convert:
                 attempt.append((Convert.oklchSToRgbF, f"oklch({components[0]} {components[1]} {components[2]})", NOTATION[2]))
 
         for fn, val, notation in attempt:
+            print(f"Testing {fn.__name__} with {val}...")
             res = fn(val, trc)
             if res:
+                print(f"Parsed syntax in notation {notation}: {syntax} -> {res}")
                 return res, notation
         
-        raise ValueError(f"Unable to parse syntax: {syntax}")
+        return None
 
     @staticmethod
     def roundZero(n: float, d: int):
@@ -429,7 +432,9 @@ class Convert:
     
     @staticmethod
     def hexSToRgbF(syntax: str, trc: str):
-        if len(syntax) != 7:
+        print(syntax)
+
+        if not syntax.startswith("#") or len(syntax) != 7:
             return None
         try:
             r = int(syntax[1:3], 16) / 255.0
@@ -461,6 +466,8 @@ class Convert:
     
     @staticmethod
     def oklabSToRgbF(syntax: str, trc: str):
+        print(syntax)
+
         strings = syntax[5:].strip("( )").split()
         if len(strings) != 3:
             return None
@@ -534,6 +541,8 @@ class Convert:
     
     @staticmethod
     def oklchSToRgbF(syntax: str, trc: str):
+        print(syntax)
+
         strings = syntax[5:].strip("( )").split()
         if len(strings) != 3:
             return None
@@ -552,7 +561,8 @@ class Convert:
             h = Convert.clampF(float(h.strip("deg")), 360.0)
         except ValueError:
             return None
-        return Convert.oklchToRgbF(l, c, h, -1, trc)
+        
+        return Convert.oklchToRgbF(l * 100, c * 100, h, -1, trc)
     
     @staticmethod
     def oklchToRgbF(l: float, c: float, h: float, u: float, trc: str):

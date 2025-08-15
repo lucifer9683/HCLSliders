@@ -1815,7 +1815,10 @@ class HCLSliders(DockWidget):
         if syntax == self.text:
             return
 
-        rgb, notation = Convert.parseAnything(syntax, self.trc, self.notation)
+        result = Convert.parseAnything(syntax, self.trc, self.notation)
+        if result is None:
+            return
+        rgb, notation = result
         
         self.setNotation(notation)
         if notation != self.notation:
