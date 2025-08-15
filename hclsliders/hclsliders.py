@@ -1117,7 +1117,8 @@ class HCLSliders(DockWidget):
                 except ValueError:
                     print(f"Invalid displacement amount for {name}")
 
-                if name[:3] in ["hcy", "okhcl", "oklch"] and name[-6:] != "Chroma":
+                if any(x in name for x in ["hcy", "okhcl", "oklch"]) and name[-6:] != "Chroma":
+                    print(name)
                     channel.scale = settings[2] == "True"
 
                 if name[-3:] == "Hue":
@@ -1168,7 +1169,7 @@ class HCLSliders(DockWidget):
             settings.append(str(channel.slider.interval))
             settings.append(str(channel.slider.displacement))
 
-            if (name[:3] == "hcy" or name[:5] == "okhcl") and name[-6:] != "Chroma":
+            if any(x in name for x in ["hcy", "okhcl", "oklch"]) and name[-6:] != "Chroma":
                 settings.append(str(channel.scale))
             if name[-3:] == "Hue":
                 settings.append(str(channel.colorful))
@@ -1332,6 +1333,7 @@ class HCLSliders(DockWidget):
     def updateChannels(self, values: tuple|float, name: str=None, widget: str=None):
         self.timer.stop()
         self.blockChannels(True)
+        print(values, name)
         
         if type(values) is tuple:
             # update color from krita that is not adjusted by this plugin
@@ -1467,6 +1469,7 @@ class HCLSliders(DockWidget):
                 chroma = self.oklchChroma.value()
                 limit = -1
                 if channel.scale:
+                    print(self.oklchChroma.limit, chroma)
                     if self.oklchChroma.limit > 0:
                         self.oklchChroma.clip = chroma
                     limit = self.oklchChroma.limit
@@ -1479,6 +1482,7 @@ class HCLSliders(DockWidget):
                 self.setKritaColor(rgb)
                 if name[-6:] != "Chroma":
                     oklch = Convert.rgbFToOklch(*rgb, hue, self.trc)
+                    print(oklch)
                     self.oklchChroma.setLimit(oklch[3])
                     self.oklchChroma.setValue(oklch[1])
                 self.setChannelValues("hsv", rgb)
