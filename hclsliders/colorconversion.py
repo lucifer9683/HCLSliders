@@ -471,7 +471,6 @@ class Convert:
         l = oklab[0]
         ch = Convert.cartesianToPolar(oklab[1], oklab[2])
         c = ch[0]
-        h = 0
         # chroma of neutral colors will not be exactly 0 due to floating point errors
         if c < 0.000001:
             # use current hue to calulate chroma limit in sRGB gamut for neutral colors
@@ -487,7 +486,6 @@ class Convert:
             else:
                 h = round(ch[1], 2)
                 c = Convert.roundZero(c, 4)
-                
             # a and b must be normalized to c = 1 to calculate chroma limit in sRGB gamut
             a_ = oklab[1] / c
             b_ = oklab[2] / c
