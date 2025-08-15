@@ -1117,7 +1117,7 @@ class HCLSliders(DockWidget):
                 except ValueError:
                     print(f"Invalid displacement amount for {name}")
 
-                if (name[:3] == "hcy" or name[:5] == "okhcl") and name[-6:] != "Chroma":
+                if name[:3] in ["hcy", "okhcl", "oklch"] and name[-6:] != "Chroma":
                     channel.scale = settings[2] == "True"
 
                 if name[-3:] == "Hue":
