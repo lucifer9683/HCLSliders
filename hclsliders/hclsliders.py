@@ -340,7 +340,7 @@ class ChannelSlider(QWidget):
             position = width
         elif position < 0:
             position = 0.0
-        self.value = round((position / width) * self.limit, 3)
+        self.value = round((position / width) * self.limit, 4)
         self.valueChanged.emit(self.value)
         self.mousePressed.emit(True)
 
@@ -351,7 +351,7 @@ class ChannelSlider(QWidget):
             position = width
         elif position < 0:
             position = 0.0
-        value = round((position / width) * self.limit, 3)
+        value = round((position / width) * self.limit, 4)
 
         if value != 0 and value != self.limit:
             interval = self.interval if self.interval != 0 else self.limit
@@ -378,6 +378,8 @@ class ChannelSlider(QWidget):
     def emitValueShifted(self, event):
         position = event.x()
         vector = position - self.position
+        if self.limit < 100:
+            self.shift /= 100 / self.limit
         value = self.start + (vector * self.shift)
 
         if value < 0:
@@ -503,7 +505,10 @@ class ColorChannel:
 
         self.spinBox = QDoubleSpinBox()
         if self.name[-6:] == "Chroma":
-            self.spinBox.setDecimals(3)
+            if self.name[:5] == "oklch":
+                self.spinBox.setDecimals(4)
+            else:    
+                self.spinBox.setDecimals(3)
         self.spinBox.setMaximum(self.limit)
         self.spinBox.setWrapping(wrap)
         self.spinBox.setFixedHeight(CHANNEL_HEIGHT)
@@ -524,10 +529,13 @@ class ColorChannel:
         self.spinBox.setValue(value)
 
     def setLimit(self, value: float):
-        decimal = 2 if value >= 10 else 3
-        self.limit = round(value, decimal)
+        if self.name == "oklchChroma":
+            self.limit = value
+        else:
+            decimal = 2 if value >= 10 else 3
+            self.spinBox.setDecimals(decimal)
+            self.limit = round(value, decimal)
         self.slider.setLimit(self.limit)
-        self.spinBox.setDecimals(decimal)
         self.spinBox.setMaximum(self.limit)
         self.spinBox.setSingleStep(self.limit / 100)
 
@@ -1303,9 +1311,9 @@ class HCLSliders(DockWidget):
         self.okhslSaturation.blockSignals(block)
         self.okhslLightness.blockSignals(block)
         # oklch
-        self.oklchHue.blockSignals(block)
-        self.oklchChroma.blockSignals(block)
         self.oklchLightness.blockSignals(block)
+        self.oklchChroma.blockSignals(block)
+        self.oklchHue.blockSignals(block)
 
     def updateChannels(self, values: tuple|float, name: str=None, widget: str=None):
         self.timer.stop()
@@ -1820,8 +1828,8 @@ class HCLSliders(DockWidget):
             return
         rgb, notation = result
         
-        self.setNotation(notation)
         if notation != self.notation:
+            self.setNotation(notation)
             self.updateNotations()
         if rgb:
             self.setKritaColor(rgb)

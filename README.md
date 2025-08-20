@@ -21,29 +21,30 @@ This plugin contains sliders for various hue/colorfulness/lightness models for u
 
 *OKHSL* (Hue, Interpolated Saturation, Referenced Lightness)
 
-*OKHCL* (Hue, Chroma, Lightness)
+*OKLCH* (Lightness, Chroma, Hue)
 
 ### Accepted CSS Syntax
 
-*Heximal* notations: Must be 6 digits, i.e. `#AABBCC`
+*Hexadecimal* notations: Must be 3 or 6 digits in the order of RGB, i.e. `#AABBCC` `#abc`
 
 *Oklab* notations: RGB values will be clipped to the sRGB gamut, i.e. `oklab(50% 0 0)`
 
-*Oklch* notations: Hue must be given in degrees and RGB will be clipped, i.e. `oklch(50% 0.1 300)`
+*Oklch* notations: Hue can be given in deg, grad, rad or turn and RGB will be clipped, i.e. `oklch(50% 0.1 270)` `oklch(50% 0.1 300grad)` 
 
 Some extra non-standard formats are also supported when parsing:
 
 - Heximal without the `#` prefix, i.e. `AABBCC`
 - Oklab/Oklch without the `okxxx` and brackets, i.e. `50% 0 0` (Or not using percentage value, like `0.5`)
+- Oklch accepts negative angles for Hue i.e `-90` (equivalent to `270deg`)
 
 ## Slider Interactions
 Left Mouse Button/Pen **Press**: Set value for channel
 
 **Ctrl** + Left Mouse Button/Pen **Press**: Snap value to interval points
 
-**Shift** + Left Mouse Button/Pen **Drag**: Shift value by 0.1 precision
+**Shift** + Left Mouse Button/Pen **Drag**: Shift value by 0.1 precision (or lower for chroma)
 
-**Alt** + Left Mouse Button/Pen **Drag**: Shift value by 0.01 precision
+**Alt** + Left Mouse Button/Pen **Drag**: Shift value by 0.01 precision (or lower for chroma)
 
 ## History Interactions
 Left Mouse Button/Pen **Click**: Set color to foreground
@@ -56,7 +57,7 @@ Left Mouse Button/Pen **Click**: Set color to foreground
 
 **Alt** + Left Mouse Button/Pen **Drag**: Delete a series of colors from history, starting from the point where mouse/pen is pressed until where the mouse/pen is released
 
-## (New) Background Selector Mode
+## Background Selector Mode
 **Click** on the color display panel on the plugin to toggle between selecting foreground and background color.
 
 ## Install/Update

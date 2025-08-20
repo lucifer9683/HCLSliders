@@ -72,41 +72,6 @@ K3 = (1.0 + K1) / (1.0 + K2)
 class Convert:
 
     @staticmethod
-    def parseAnything(syntax: str, trc: str, curNotation: str):
-        attempt = []
-
-        if len(syntax) == 6:
-            attempt.append((Convert.hexSToRgbF, "#" + syntax, NOTATION[0]))
-        if len(syntax) == 7 and syntax[0] == "#":
-            attempt.append((Convert.hexSToRgbF, syntax, NOTATION[0]))
-        
-        if syntax.startswith("oklab"):
-            attempt.append((Convert.oklabSToRgbF, syntax, NOTATION[1]))
-        if syntax.startswith("oklch"):
-            attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
-        if curNotation == NOTATION[1]:
-            attempt.append((Convert.oklabSToRgbF, syntax, NOTATION[1]))
-        if curNotation == NOTATION[2]:
-            attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
-        
-        components = syntax.split(" ")
-        print(f"Components: {components}")
-        if len(components) == 3:
-            if curNotation == NOTATION[1] or components[1][0] == "-" or components[2][0] == "-":
-                attempt.append((Convert.oklabSToRgbF, f"oklab({components[0]} {components[1]} {components[2]})", NOTATION[1]))
-            if curNotation == NOTATION[2]:
-                attempt.append((Convert.oklchSToRgbF, f"oklch({components[0]} {components[1]} {components[2]})", NOTATION[2]))
-
-        for fn, val, notation in attempt:
-            print(f"Testing {fn.__name__} with {val}...")
-            res = fn(val, trc)
-            if res:
-                print(f"Parsed syntax in notation {notation}: {syntax} -> {res}")
-                return res, notation
-        
-        return None
-
-    @staticmethod
     def roundZero(n: float, d: int):
         s = -1 if n < 0 else 1
         if not isinstance(d, int):
@@ -158,33 +123,45 @@ class Convert:
     @staticmethod
     def linearToOklab(r: float, g: float, b: float):
         # convert to approximate cone responses
-        l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
-        m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
-        s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
+        #l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
+        l = 0.412221469470763 * r + 0.5363325372617348 * g + 0.0514459932675022 * b
+        #m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
+        m = 0.2119034958178252 * r + 0.6806995506452344 * g + 0.1073969535369406 * b
+        #s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
+        s = 0.0883024591900564 * r + 0.2817188391361215 * g + 0.6299787016738222 * b
         # apply non-linearity
         l_ = l ** (1 / 3)
         m_ = m ** (1 / 3)
         s_ = s ** (1 / 3)
         # transform to Lab coordinates
-        okL = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
-        okA = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
-        okB = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+        #okL = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
+        okL = 0.210454268309314 * l_ + 0.7936177747023054 * m_ - 0.0040720430116193 * s_
+        #okA = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
+        okA = 1.9779985324311684 * l_ - 2.4285922420485799 * m_ + 0.450593709617411 * s_
+        #okB = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+        okB = 0.0259040424655478 * l_ + 0.7827717124575296 * m_ - 0.8086757549230774 * s_
         return (okL, okA, okB)
     
     @staticmethod
     def oklabToLinear(okL: float, okA: float, okB: float):
         # inverse coordinates
-        l_ = okL + 0.3963377774 * okA + 0.2158037573 * okB
-        m_ = okL - 0.1055613458 * okA - 0.0638541728 * okB
-        s_ = okL - 0.0894841775 * okA - 1.2914855480 * okB
+        #l_ = okL + 0.3963377774 * okA + 0.2158037573 * okB
+        l_ = okL + 0.3963377773761749 * okA + 0.2158037573099136 * okB
+        #m_ = okL - 0.1055613458 * okA - 0.0638541728 * okB
+        m_ = okL - 0.1055613458156586 * okA - 0.0638541728258133 * okB
+        #s_ = okL - 0.0894841775 * okA - 1.2914855480 * okB
+        s_ = okL - 0.0894841775298119 * okA - 1.2914855480194092 * okB
         # reverse non-linearity
         l = l_ * l_ * l_
         m = m_ * m_ * m_
         s = s_ * s_ * s_
         # convert to linear rgb
-        r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
-        g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
-        b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+        #r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
+        r = +4.0767416360759574 * l - 3.3077115392580616 * m + 0.2309699031821044 * s
+        #g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
+        g = -1.2684379732850317 * l + 2.6097573492876887 * m - 0.3413193760026573 * s
+        #b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+        b = -0.0041960761386756 * l - 0.7034186179359362 * m + 1.7076146940746117 * s
         return(r, g, b)
     
     @staticmethod
@@ -432,14 +409,12 @@ class Convert:
     
     @staticmethod
     def hexSToRgbF(syntax: str, trc: str):
-        print(syntax)
-
-        if not syntax.startswith("#") or len(syntax) != 7:
+        if not syntax.startswith("#") or not (len(syntax) == 4 or len(syntax) == 7):
             return None
         try:
-            r = int(syntax[1:3], 16) / 255.0
-            g = int(syntax[3:5], 16) / 255.0
-            b = int(syntax[5:7], 16) / 255.0
+            r = int(syntax[1] + syntax[1] if len(syntax) == 4 else syntax[1:3], 16) / 255.0
+            g = int(syntax[2] + syntax[2] if len(syntax) == 4 else syntax[3:5], 16) / 255.0
+            b = int(syntax[3] + syntax[3] if len(syntax) == 4 else syntax[5:7], 16) / 255.0
         except ValueError:
             return None
         
@@ -466,8 +441,8 @@ class Convert:
     
     @staticmethod
     def oklabSToRgbF(syntax: str, trc: str):
-        print(syntax)
-
+        if not syntax.startswith("oklab"):
+            return None
         strings = syntax[5:].strip("( )").split()
         if len(strings) != 3:
             return None
@@ -475,16 +450,16 @@ class Convert:
         okA = strings[1]
         okB = strings[2]
         try:
-            if "%" in okL:
-                okL = Convert.clampF(float(okL.strip("%")) / 100)
+            if okL.endswith("%"):
+                okL = Convert.clampF(float(okL[:-1]) / 100)
             else:
                 okL = Convert.clampF(float(okL))
-            if "%" in okA:
-                okA = Convert.clampF(float(okA.strip("%")) / 250, 0.4, -0.4)
+            if okA.endswith("%"):
+                okA = Convert.clampF(float(okA[:-1]) / 250, 0.4, -0.4)
             else:
                 okA = Convert.clampF(float(okA), 0.4, -0.4)
-            if "%" in okB:
-                okB = Convert.clampF(float(okB.strip("%")) / 250, 0.4, -0.4)
+            if okB.endswith("%"):
+                okB = Convert.clampF(float(okB[:-1]) / 250, 0.4, -0.4)
             else:
                 okB = Convert.clampF(float(okB), 0.4, -0.4)
         except ValueError:
@@ -511,10 +486,15 @@ class Convert:
         if c < 0.000001:
             # use current hue to calulate chroma limit in sRGB gamut for neutral colors
             ab = Convert.polarToCartesian(1, h)
-            cuspLC = Convert.findCuspLC(*ab)
-            u = Convert.findGamutIntersection(*ab, l, 1, l, cuspLC)
+            u = Convert.findGamutIntersection(*ab, l, 1, l)
             c = 0
         else:
+            # a and b must be normalized to c = 1 to calculate chroma limit in sRGB gamut
+            a_ = oklab[1] / c
+            b_ = oklab[2] / c
+            u = Convert.findGamutIntersection(a_, b_, l, 1, l)
+            if c > u:
+                c = u
             # chroma adjustment due to rounding up blue hue
             if 264.052 < ch[1] < 264.06:
                 h = 264.06
@@ -522,47 +502,8 @@ class Convert:
             else:
                 h = round(ch[1], 2)
                 c = Convert.roundZero(c, 4)
-            # a and b must be normalized to c = 1 to calculate chroma limit in sRGB gamut
-            a_ = oklab[1] / c
-            b_ = oklab[2] / c
-            cuspLC = Convert.findCuspLC(a_, b_)
-            u = Convert.findGamutIntersection(a_, b_, l, 1, l, cuspLC)
-            if c > u:
-                c = u
-        
-        # l = Convert.toe(l)
-        # l in [0, 100], c is 0 to 0.3+, h in degrees
-        return (l * 100, c * 100, h, u * 100)
-    
-    @staticmethod
-    def rgbFToOklchS(r: float, g: float, b: float, trc: str):
-        l, c, h, _ = Convert.rgbFToOklch(r, g, b, 0, trc)
-        return f"oklch({round(l, 2)}% {round(c / 100, 2)} {h})"
-    
-    @staticmethod
-    def oklchSToRgbF(syntax: str, trc: str):
-        print(syntax)
-
-        strings = syntax[5:].strip("( )").split()
-        if len(strings) != 3:
-            return None
-        l = strings[0]
-        c = strings[1]
-        h = strings[2]
-        try:
-            if "%" in l:
-                l = Convert.clampF(float(l.strip("%")) / 100)
-            else:
-                l = Convert.clampF(float(l))
-            if "%" in c:
-                c = Convert.clampF(float(c.strip("%")) / 250, 0.4)
-            else:
-                c = Convert.clampF(float(c), 0.4)
-            h = Convert.clampF(float(h.strip("deg")), 360.0)
-        except ValueError:
-            return None
-        
-        return Convert.oklchToRgbF(l * 100, c * 100, h, -1, trc)
+        u = round(u - 0.0001, 4) if h == 264.06 else Convert.roundZero(u, 4)
+        return (round(l * 100, 2), c, h, u)
     
     @staticmethod
     def oklchToRgbF(l: float, c: float, h: float, u: float, trc: str):
@@ -572,7 +513,6 @@ class Convert:
         if c:
             cMax = Convert.findGamutIntersection(*ab, l, 1, l)
             if u == -1:
-                c = c / 100
                 if c > cMax:
                     c = cMax
             else:
@@ -584,6 +524,88 @@ class Convert:
         g = Convert.componentToSRGB(rgb[1]) if trc == "sRGB" else rgb[1]
         b = Convert.componentToSRGB(rgb[2]) if trc == "sRGB" else rgb[2]
         return (Convert.clampF(r), Convert.clampF(g), Convert.clampF(b))
+    
+    @staticmethod
+    def angleStoDeg(a: str):
+        try:
+            if a.endswith("deg"):
+                d = float(a[:-3])
+            elif a.endswith("grad"):
+                d = (float(a[:-4]) / 10) * 9
+            elif a.endswith("rad"):
+                d = math.degrees(float(a[:-3]))
+            elif a.endswith("turn"):
+                d = float(a[:-4]) * 360
+            else:
+                d = float(a)
+            return (d % 360) + 360 if d < 0 else d
+        except ValueError:
+            return None
+    
+    @staticmethod
+    def rgbFToOklchS(r: float, g: float, b: float, trc: str):
+        l, c, h, _ = Convert.rgbFToOklch(r, g, b, 0, trc)
+        # l in percentage, c is 0 to 0.3+, h in degrees
+        return f"oklch({l}% {c} {h})"
+    
+    @staticmethod
+    def oklchSToRgbF(syntax: str, trc: str):
+        if not syntax.startswith("oklch"):
+            return None
+        strings = syntax[5:].strip("( )").split()
+        if len(strings) != 3:
+            return None
+        l = strings[0]
+        c = strings[1]
+        h = strings[2]
+        try:
+            if l.endswith("%"):
+                l = Convert.clampF(float(l[:-1]) / 100)
+            else:
+                l = Convert.clampF(float(l))
+            if c.endswith("%"):
+                c = Convert.clampF(float(c[:-1]) / 250, 0.4)
+            else:
+                c = Convert.clampF(float(c), 0.4)
+            h = Convert.angleStoDeg(h)
+            if h is None:
+                return None
+        except ValueError:
+            return None
+        
+        return Convert.oklchToRgbF(l * 100, c, h, -1, trc)
+    
+    @staticmethod
+    def parseAnything(syntax: str, trc: str, curNotation: str):
+        attempt = []
+        
+        if len(syntax) == 3 or len(syntax) == 6:
+            attempt.append((Convert.hexSToRgbF, "#" + syntax, NOTATION[0]))
+        if (len(syntax) == 4 or len(syntax) == 7) and syntax[0] == "#":
+            attempt.append((Convert.hexSToRgbF, syntax, NOTATION[0]))
+        
+        if syntax.startswith("oklab"):
+            attempt.append((Convert.oklabSToRgbF, syntax, NOTATION[1]))
+        if syntax.startswith("oklch"):
+            attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
+        if curNotation == NOTATION[1]:
+            attempt.append((Convert.oklabSToRgbF, syntax, NOTATION[1]))
+        if curNotation == NOTATION[2]:
+            attempt.append((Convert.oklchSToRgbF, syntax, NOTATION[2]))
+        
+        components = syntax.split()
+        if len(components) == 3:
+            if curNotation == NOTATION[1] or components[1][0] == "-":
+                attempt.append((Convert.oklabSToRgbF, f"oklab({components[0]} {components[1]} {components[2]})", NOTATION[1]))
+            if curNotation == NOTATION[2] or components[2].endswith(("deg", "grad", "rad", "turn")):
+                attempt.append((Convert.oklchSToRgbF, f"oklch({components[0]} {components[1]} {components[2]})", NOTATION[2]))
+
+        for fn, val, notation in attempt:
+            res = fn(val, trc)
+            if res:
+                return res, notation
+        
+        return None
     
     @staticmethod
     def hSectorToRgbF(hSector: float, v: float, m: float, x: float, trc: str="sRGB"):
@@ -869,9 +891,8 @@ class Convert:
         # convert lref back to okL
         l = Convert.toeInv(l / 100)
         # clip chroma if exceed sRGB gamut
-        ab = (0, 0)
+        ab = Convert.polarToCartesian(1, h)
         if c:
-            ab = Convert.polarToCartesian(1, h)
             cuspLC = Convert.findCuspLC(*ab)
             cMax = Convert.findGamutIntersection(*ab, l, 1, l, cuspLC)
             if u == -1:
@@ -881,8 +902,7 @@ class Convert:
             else:
                 s = c / u
                 c = s * cMax
-            ab = Convert.polarToCartesian(c, h)
-        rgb = Convert.oklabToLinear(l, *ab)
+        rgb = Convert.oklabToLinear(l, ab[0] * c, ab[1] * c)
         # perform transfer functions for components if output to sRGB
         r = Convert.componentToSRGB(rgb[0]) if trc == "sRGB" else rgb[0]
         g = Convert.componentToSRGB(rgb[1]) if trc == "sRGB" else rgb[1]
