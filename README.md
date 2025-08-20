@@ -33,7 +33,7 @@ This plugin contains sliders for various hue/colorfulness/lightness models for u
 
 Some extra non-standard formats are also supported when parsing:
 
-- Heximal without the `#` prefix, i.e. `AABBCC`
+- Hexadecimal without the `#` prefix, i.e. `AABBCC`
 - Oklab/Oklch without the `okxxx` and brackets, i.e. `50% 0 0` (Or not using percentage value, like `0.5`)
 - Oklch accepts negative angles for Hue i.e `-90` (equivalent to `270deg`)
 
