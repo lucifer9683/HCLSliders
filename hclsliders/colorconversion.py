@@ -516,7 +516,7 @@ class Convert:
                 if c > cMax:
                     c = cMax
             else:
-                s = c / u
+                s = (c + 0.00005) / (u + 0.00005)
                 c = s * cMax
         rgb = Convert.oklabToLinear(l, ab[0] * c, ab[1] * c)
         # if rgb not linear, perform transfer functions for components
