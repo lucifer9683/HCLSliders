@@ -1828,8 +1828,8 @@ class HCLSliders(DockWidget):
             return
         rgb, notation = result
         
-        self.setNotation(notation)
         if notation != self.notation:
+            self.setNotation(notation)
             self.updateNotations()
         if rgb:
             self.setKritaColor(rgb)
