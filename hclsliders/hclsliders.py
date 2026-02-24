@@ -58,6 +58,8 @@ class ColorDisplay(QWidget):
         self.background = None
         self.temp = None
         self.bgMode = False
+        self.displayBoth = False
+        self.flip = False
         self.switchToolTip()
 
     def setCurrentColor(self, color=None):
@@ -121,10 +123,16 @@ class ColorDisplay(QWidget):
         return False
     
     def switchToolTip(self):
-        if self.bgMode:
-            self.setToolTip("Background Color")
+        if self.displayBoth:
+            if self.flip:
+                self.setToolTip("Foreground Color | Background Color")
+            else:
+                self.setToolTip("Background Color | Foreground Color")
         else:
-            self.setToolTip("Foreground Color")
+            if self.bgMode:
+                self.setToolTip("Background Color")
+            else:
+                self.setToolTip("Foreground Color")
     
     def switchMode(self):
         self.bgMode = not self.bgMode
@@ -135,34 +143,62 @@ class ColorDisplay(QWidget):
         self.setFocus()
         self.switchMode()
 
+    def displayBothColors(self, check: bool):
+        self.displayBoth = check
+        self.switchToolTip()
+        self.update()
+
+    def flipDisplay(self, check: bool):
+        self.flip = check
+        self.switchToolTip()
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setPen(Qt.PenStyle.NoPen)
         width = self.width()
-        halfwidth = round(width / 2.0)
         height = self.height()
-        # foreground/background color from krita
-        if self.foreground and not self.bgMode:
-            painter.setBrush(QBrush(self.foreground.colorForCanvas(self.hcl.canvas())))
-        elif self.background and self.bgMode:
-            painter.setBrush(QBrush(self.background.colorForCanvas(self.hcl.canvas())))
+        foreground = self.foreground.colorForCanvas(self.hcl.canvas()) if self.foreground else QColor(0, 0, 0)
+        background = self.background.colorForCanvas(self.hcl.canvas()) if self.background else QColor(0, 0, 0)
+        flipped = (self.bgMode and not self.flip) or (not self.bgMode and self.flip)
+        if self.displayBoth:
+            thirdwidth = round(width / 3.0)
+            # foreground and background color from krita
+            if flipped:
+                painter.setBrush(QBrush(background if self.bgMode else foreground))
+                painter.drawRect(0, 0, width - thirdwidth, height)
+                painter.setBrush(QBrush(foreground if self.bgMode else background))
+                painter.drawRect(width - thirdwidth, 0, thirdwidth, height)
+            else:
+                painter.setBrush(QBrush(foreground if self.bgMode else background))
+                painter.drawRect(0, 0, thirdwidth, height)
+                painter.setBrush(QBrush(background if self.bgMode else foreground))
+                painter.drawRect(thirdwidth, 0, width - thirdwidth, height)
+            if self.current:
+                painter.setBrush(QBrush(self.current.colorForCanvas(self.hcl.canvas())))
+                painter.drawRect(thirdwidth, 0, width - 2 * thirdwidth, height)
+            if self.temp:
+                painter.setBrush(QBrush(self.temp.colorForCanvas(self.hcl.canvas())))
+                painter.drawRect(thirdwidth, 0, width - 2 * thirdwidth, height)
         else:
-            painter.setBrush( QBrush(QColor(0, 0, 0)))
-        painter.drawRect(0, 0, width, height)
-        # current color from sliders
-        if self.current:
-            painter.setBrush(QBrush(self.current.colorForCanvas(self.hcl.canvas())))
-            if self.bgMode:
-                painter.drawRect(halfwidth, 0, width - halfwidth, height)
-            else:
-                painter.drawRect(0, 0, halfwidth, height)
-        # indicator for picking past color in other mode
-        if self.temp:
-            painter.setBrush(QBrush(self.temp.colorForCanvas(self.hcl.canvas())))
-            if self.bgMode:
-                painter.drawRect(0, 0, halfwidth, height)
-            else:
-                painter.drawRect(halfwidth, 0, width - halfwidth, height)
+            halfwidth = round(width / 2.0)
+            # foreground/background color from krita
+            painter.setBrush(QBrush(background if self.bgMode else foreground)) 
+            painter.drawRect(0, 0, width, height)
+            # current color from sliders
+            if self.current:
+                painter.setBrush(QBrush(self.current.colorForCanvas(self.hcl.canvas())))
+                if flipped:
+                    painter.drawRect(halfwidth, 0, width - halfwidth, height)
+                else:
+                    painter.drawRect(0, 0, halfwidth, height)
+            # indicator for picking past color in other mode
+            if self.temp:
+                painter.setBrush(QBrush(self.temp.colorForCanvas(self.hcl.canvas())))
+                if flipped:
+                    painter.drawRect(0, 0, halfwidth, height)
+                else:
+                    painter.drawRect(halfwidth, 0, width - halfwidth, height)
 
 
 class ColorHistory(QListWidget):
@@ -876,6 +912,21 @@ class SliderConfig(QDialog):
         self.others.setFixedWidth(SIDEBAR_WIDTH)
         self.others.clicked.connect(self.changeOthers)
 
+        display = QGroupBox("Color Display")
+        display.setFixedHeight(GROUPBOX_HEIGHT)
+        both = QCheckBox("Display Both Colors")
+        both.setToolTip("Displays both foreground and background colors")
+        both.setChecked(self.hcl.color.displayBoth)
+        both.toggled.connect(self.hcl.color.displayBothColors)
+        flip = QCheckBox("Flip Display")
+        flip.setToolTip("Flips the orientation of the color display")
+        flip.setChecked(self.hcl.color.flip)
+        flip.toggled.connect(self.hcl.color.flipDisplay)
+        displayLayout = QHBoxLayout()
+        displayLayout.addWidget(both)
+        displayLayout.addWidget(flip)
+        display.setLayout(displayLayout)
+
         history = QGroupBox("Color History")
         history.setFixedHeight(GROUPBOX_HEIGHT)
         history.setToolTip("Records foreground color when changed")
@@ -905,11 +956,11 @@ class SliderConfig(QDialog):
 
         othersTab = QWidget()
         pageLayout = QVBoxLayout()
-        pageLayout.addSpacing(OTHERS_HEIGHT)
+        pageLayout.addWidget(display)
+        pageLayout.addStretch()
         pageLayout.addWidget(history)
         pageLayout.addStretch()
         pageLayout.addWidget(syntax)
-        pageLayout.addStretch()
         othersTab.setLayout(pageLayout)
         othersPage = QTabWidget()
         othersPage.addTab(othersTab, "Other Settings")
@@ -1128,6 +1179,11 @@ class HCLSliders(DockWidget):
         if not self.displayOrder and not empty:
             self.displayOrder = channels
 
+        color = Application.readSetting(DOCKER_NAME, "color", "").split(",")
+        if len(color) == 2:
+            self.color.displayBothColors(color[0] != "False")
+            self.color.flipDisplay(color[1] != "False")
+
         history = Application.readSetting(DOCKER_NAME, "history", "").split(",")
         if len(history) == 2:
             self.history.setEnabled(history[0] != "False")
@@ -1162,6 +1218,9 @@ class HCLSliders(DockWidget):
                 settings.append(str(channel.luma))
             
             Application.writeSetting(DOCKER_NAME, name, ",".join(settings))
+
+        color = [str(self.color.displayBoth), str(self.color.flip)]
+        Application.writeSetting(DOCKER_NAME, "color", ",".join(color))
 
         history = [str(self.history.isEnabled()), str(self.memory)]
         Application.writeSetting(DOCKER_NAME, "history", ",".join(history))

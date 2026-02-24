@@ -13,7 +13,6 @@ CONFIG_SIZE = (468, 230) # (width in px, height in px) size for config window
 SIDEBAR_WIDTH = 76 # px for sidebar containing channel selection and others button 
 GROUPBOX_HEIGHT = 64 # px for groupboxes of cursor snapping, chroma mode and color history
 SPINBOX_WIDTH = 72 # px for spinboxes of interval, displacement and memory
-OTHERS_HEIGHT = 12 # px for spacing before color history in others page
 # compatible color profiles in krita
 SRGB = ('sRGB-elle-V2-srgbtrc.icc', 'sRGB built-in', 
         'Gray-D50-elle-V2-srgbtrc.icc', 'Gray-D50-elle-V4-srgbtrc.icc')
