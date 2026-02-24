@@ -160,10 +160,11 @@ class ColorDisplay(QWidget):
         height = self.height()
         foreground = self.foreground.colorForCanvas(self.hcl.canvas()) if self.foreground else QColor(0, 0, 0)
         background = self.background.colorForCanvas(self.hcl.canvas()) if self.background else QColor(0, 0, 0)
+        flipped = (self.bgMode and not self.flip) or (not self.bgMode and self.flip)
         if self.displayBoth:
             thirdwidth = round(width / 3.0)
             # foreground and background color from krita
-            if (self.bgMode and not self.flip) or (not self.bgMode and self.flip):
+            if flipped:
                 painter.setBrush(QBrush(background if self.bgMode else foreground))
                 painter.drawRect(0, 0, width - thirdwidth, height)
                 painter.setBrush(QBrush(foreground if self.bgMode else background))
@@ -187,14 +188,14 @@ class ColorDisplay(QWidget):
             # current color from sliders
             if self.current:
                 painter.setBrush(QBrush(self.current.colorForCanvas(self.hcl.canvas())))
-                if (self.bgMode and not self.flip) or (not self.bgMode and self.flip):
+                if flipped:
                     painter.drawRect(halfwidth, 0, width - halfwidth, height)
                 else:
                     painter.drawRect(0, 0, halfwidth, height)
             # indicator for picking past color in other mode
             if self.temp:
                 painter.setBrush(QBrush(self.temp.colorForCanvas(self.hcl.canvas())))
-                if (self.bgMode and not self.flip) or (not self.bgMode and self.flip):
+                if flipped:
                     painter.drawRect(0, 0, halfwidth, height)
                 else:
                     painter.drawRect(halfwidth, 0, width - halfwidth, height)
