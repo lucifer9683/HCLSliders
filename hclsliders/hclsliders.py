@@ -145,10 +145,12 @@ class ColorDisplay(QWidget):
 
     def displayBothColors(self, check: bool):
         self.displayBoth = check
+        self.switchToolTip()
         self.update()
 
     def flipDisplay(self, check: bool):
         self.flip = check
+        self.switchToolTip()
         self.update()
 
     def paintEvent(self, event):
@@ -1178,8 +1180,8 @@ class HCLSliders(DockWidget):
 
         color = Application.readSetting(DOCKER_NAME, "color", "").split(",")
         if len(color) == 2:
-            self.color.displayBoth = color[0] != "False"
-            self.color.flip = color[1] != "False"
+            self.color.displayBothColors(color[0] != "False")
+            self.color.flipDisplay(color[1] != "False")
 
         history = Application.readSetting(DOCKER_NAME, "history", "").split(",")
         if len(history) == 2:
